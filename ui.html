@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MAX | Persistent Voice Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            background: radial-gradient(ellipse at 20% 30%, #0a0f2a, #03050c);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .grid-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+        }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(0, 255, 255, 0.15);
+            border-radius: 50%;
+            animation: float 20s infinite ease-in-out;
+            box-shadow: 0 0 10px cyan;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
+            25% { transform: translateY(-100px) translateX(50px); opacity: 0.8; }
+            50% { transform: translateY(-50px) translateX(100px); opacity: 0.5; }
+            75% { transform: translateY(100px) translateX(50px); opacity: 0.7; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .max-circle {
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle at 30% 30%, #1a3a8a, #0a1a4a);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 60px rgba(0, 255, 255, 0.5), 0 0 120px rgba(74, 158, 255, 0.3), inset 0 0 30px rgba(0, 255, 255, 0.2);
+            animation: neonPulse 2s infinite, floatGlow 4s ease-in-out infinite;
+            transition: transform 0.3s ease;
+            border: 2px solid rgba(0, 255, 255, 0.6);
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            position: relative;
+        }
+
+        .listening-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #0ff;
+            top: 0;
+            left: 0;
+            animation: listeningPulse 1.5s infinite;
+            display: none;
+        }
+
+        @keyframes listeningPulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.15); opacity: 0; }
+        }
+
+        .max-circle.listening .listening-ring {
+            display: block;
+        }
+
+        .max-circle.awake .wake-indicator {
+            opacity: 1;
+        }
+
+        @keyframes neonPulse {
+            0% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.4), 0 0 80px rgba(74, 158, 255, 0.2); }
+            50% { box-shadow: 0 0 80px rgba(0, 255, 255, 0.8), 0 0 150px rgba(74, 158, 255, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.4), 0 0 80px rgba(74, 158, 255, 0.2); }
+        }
+
+        @keyframes floatGlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .max-circle:hover {
+            transform: scale(1.02) translateY(-5px);
+        }
+
+        .max-text {
+            font-size: 72px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, #4a9eff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 30px rgba(74, 158, 255, 0.5);
+            letter-spacing: 6px;
+        }
+
+        .status-text {
+            font-size: 12px;
+            color: #4a9eff;
+            margin-top: 8px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .listening-text {
+            font-size: 10px;
+            color: #0ff;
+            margin-top: 12px;
+            opacity: 0.8;
+        }
+
+        .wake-indicator {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0ff;
+            color: #0a1a4a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .max-circle.awake .wake-indicator {
+            opacity: 1;
+        }
+
+        .chat-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #0a1a4a, #0a2a6a);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 100;
+            border: 1px solid rgba(0, 255, 255, 0.6);
+            font-size: 32px;
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-button:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.8);
+        }
+
+        .chat-window {
+            position: fixed;
+            bottom: 120px;
+            right: 30px;
+            width: 420px;
+            height: 550px;
+            background: rgba(8, 18, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(0, 255, 255, 0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 99;
+            animation: slideUp 0.3s ease;
+        }
+
+        .chat-window.show {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, rgba(10, 30, 70, 0.95), rgba(5, 15, 40, 0.95));
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .chat-header h3 {
+            color: #0ff;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px cyan;
+        }
+
+        .close-chat {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            color: #0ff;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .close-chat:hover {
+            background: rgba(255,255,255,0.2);
+            transform: rotate(90deg);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #0ff;
+            border-radius: 4px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 13px;
+            line-height: 1.4;
+            word-break: break-word;
+            animation: fadeInMsg 0.2s ease;
+        }
+
+        @keyframes fadeInMsg {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #0a3a8a, #0a2a6a);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .assistant-message {
+            background: rgba(10, 30, 70, 0.8);
+            color: #ccf4ff;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .message-time {
+            font-size: 9px;
+            opacity: 0.5;
+            margin-top: 5px;
+            font-family: monospace;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 8px 14px;
+            background: rgba(10, 30, 70, 0.8);
+            border-radius: 18px;
+            width: fit-content;
+            align-self: flex-start;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .typing-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #0ff;
+            margin: 0 2px;
+            animation: typingAnim 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingAnim {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        .chat-input-area {
+            padding: 15px;
+            border-top: 1px solid rgba(0, 255, 255, 0.2);
+            display: flex;
+            gap: 10px;
+            background: rgba(5, 15, 35, 0.9);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(10, 20, 50, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            padding: 12px 16px;
+            border-radius: 30px;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .chat-input::placeholder {
+            color: rgba(100, 180, 255, 0.5);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #0a3a8a, #0a2a6a);
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            padding: 10px 22px;
+            border-radius: 30px;
+            color: #0ff;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .send-btn:hover {
+            background: #0a4aaa;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .mic-permission-banner {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ff6b4a, #ff3a1a);
+            padding: 12px 25px;
+            border-radius: 50px;
+            color: white;
+            font-size: 13px;
+            z-index: 200;
+            display: none;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255, 60, 30, 0.5);
+        }
+
+        .alarm-notification {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ff6b4a, #ff3a1a);
+            padding: 15px 30px;
+            border-radius: 60px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 30px rgba(255, 60, 30, 0.6);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            animation: bounceIn 0.4s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+            80% { transform: translateX(-50%) scale(1.05); }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+
+        .alarm-notification button {
+            background: white;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 40px;
+            color: #ff3a1a;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #0a1a4a, #050d2a);
+            padding: 30px;
+            border-radius: 28px;
+            width: 380px;
+            text-align: center;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+        }
+
+        .modal-content h3 {
+            color: #0ff;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .modal-buttons button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .save-btn { background: #0ff; color: #0a1a4a; }
+        .cancel-btn { background: rgba(255,255,255,0.2); color: white; }
+
+        .time-input {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .time-input input, .time-input select {
+            width: auto;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <div class="max-circle" id="maxCircle" onclick="toggleChat()">
+            <div class="listening-ring"></div>
+            <div class="max-text" id="assistantName">MAX</div>
+            <div class="status-text">IDLE</div>
+            <div class="listening-text" id="listeningStatus">🎤 Say "Hey MAX" to wake me</div>
+            <div class="wake-indicator">🔊 AWAKE</div>
+        </div>
+    </div>
+
+    <button class="chat-button" id="chatButton" onclick="toggleChat()">💬</button>
+
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">
+            <h3>CHAT WITH MAX</h3>
+            <button class="close-chat" onclick="toggleChat()">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant-message">
+                I'm here. Say "Hey MAX" to wake me up, then tell me what you need. I can set alarms, stop alarms, reset notes, and have conversations. Say "stop listening" to put me to sleep.
+                <div class="message-time">Just now</div>
+            </div>
+        </div>
+        <div class="typing-indicator" id="typingIndicatorChat">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="handleChatKeyPress(event)" spellcheck="true">
+            <button class="send-btn" onclick="sendChatMessage()">SEND</button>
+        </div>
+    </div>
+
+    <div class="mic-permission-banner" id="micBanner" onclick="requestMicPermission()">
+        CLICK TO ENABLE MICROPHONE
+    </div>
+
+    <div class="modal" id="alarmModal">
+        <div class="modal-content">
+            <h3>SET ALARM</h3>
+            <div class="time-input">
+                <input type="number" id="alarmHour" min="1" max="12" value="8" style="width:70px;">
+                <span style="color:#0ff;">:</span>
+                <input type="number" id="alarmMinute" min="0" max="59" value="0" style="width:70px;">
+                <select id="alarmAmPm">
+                    <option value="AM">AM</option>
+                    <option value="PM" selected>PM</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="save-btn" onclick="setAlarmFromModal()">SET</button>
+                <button class="cancel-btn" onclick="closeAlarmModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="cancelSelectModal">
+        <div class="modal-content">
+            <h3>SELECT ALARM TO CANCEL</h3>
+            <div id="alarmListContainer" style="margin: 15px 0; max-height: 250px; overflow-y: auto;"></div>
+            <div class="modal-buttons">
+                <button class="cancel-btn" onclick="closeCancelSelectModal()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let assistantName = "MAX";
+        let activeAlarms = [];
+        let currentAlarmAudio = null;
+        let preferredVoice = null;
+        
+        // Wake word state
+        let isAwake = false;
+        let wakeTimeout = null;
+        let isMicActive = false;
+        
+        // Voice recognition
+        let wakeRecognition = null;
+        let commandRecognition = null;
+        let isCommandListening = false;
+
+        const spellCorrections = {
+            "teh": "the", "adn": "and", "i": "I", "im": "I'm", "dont": "don't",
+            "cant": "can't", "wont": "won't", "didnt": "didn't", "wasnt": "wasn't",
+            "werent": "weren't", "isnt": "isn't", "arent": "aren't", "thats": "that's",
+            "whats": "what's", "whos": "who's", "there": "there", "their": "their",
+            "theyre": "they're", "your": "your", "youre": "you're", "alot": "a lot",
+            "becuase": "because", "becouse": "because", "becasue": "because",
+            "wierd": "weird", "recieve": "receive", "recive": "receive",
+            "seperate": "separate", "definately": "definitely", "definatly": "definitely",
+            "u": "you", "r": "are", "ur": "your", "ppl": "people", "pls": "please",
+            "plz": "please", "thx": "thanks", "ty": "thank you", "np": "no problem",
+            "idk": "I don't know", "idc": "I don't care", "btw": "by the way",
+            "fyi": "for your information", "imo": "in my opinion"
+        };
+
+        function autoCorrectText(text) {
+            let words = text.split(/(\s+)/);
+            for (let i = 0; i < words.length; i++) {
+                let word = words[i];
+                let lowerWord = word.toLowerCase();
+                if (spellCorrections[lowerWord]) {
+                    let corrected = spellCorrections[lowerWord];
+                    if (word[0] === word[0].toUpperCase() && word.length > 1) {
+                        corrected = corrected.charAt(0).toUpperCase() + corrected.slice(1);
+                    }
+                    words[i] = corrected;
+                }
+            }
+            return words.join('');
+        }
+
+        async function getNaturalVoice() {
+            return new Promise((resolve) => {
+                const voices = window.speechSynthesis.getVoices();
+                const preferredNames = [
+                    'Google UK English Male',
+                    'Google US English Male', 
+                    'Microsoft David',
+                    'Microsoft Mark',
+                    'Samantha'
+                ];
+                for (const name of preferredNames) {
+                    const found = voices.find(v => v.name === name && v.lang.startsWith('en'));
+                    if (found) { resolve(found); return; }
+                }
+                resolve(voices.find(v => v.lang.startsWith('en')) || null);
+            });
+        }
+
+        async function speakResponse(message) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            if (window.speechSynthesis.getVoices().length === 0) {
+                await new Promise(resolve => window.speechSynthesis.onvoiceschanged = resolve);
+            }
+            const utterance = new SpeechSynthesisUtterance(message);
+            if (!preferredVoice) preferredVoice = await getNaturalVoice();
+            if (preferredVoice) utterance.voice = preferredVoice;
+            utterance.rate = 1.05;
+            utterance.pitch = 1.1;
+            utterance.volume = 0.95;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function setWakeState(awake) {
+            isAwake = awake;
+            const circle = document.getElementById('maxCircle');
+            const statusText = document.getElementById('listeningStatus');
+            const statusBadge = document.querySelector('.status-text');
+            
+            if (awake) {
+                circle.classList.add('awake');
+                statusText.innerHTML = '🎤 I am listening...';
+                statusText.style.color = '#0ff';
+                statusBadge.innerHTML = 'AWAKE';
+                statusBadge.style.color = '#0ff';
+                if (wakeTimeout) clearTimeout(wakeTimeout);
+                wakeTimeout = setTimeout(() => {
+                    if (isAwake) {
+                        setWakeState(false);
+                        addChatMessage('assistant', 'Going to sleep. Say "Hey MAX" to wake me up.');
+                        speakResponse('Going to sleep. Say Hey Max to wake me.');
+                    }
+                }, 30000);
+                // Start command listening when woken
+                startCommandListening();
+            } else {
+                circle.classList.remove('awake');
+                statusText.innerHTML = '🎤 Say "Hey MAX" to wake me';
+                statusText.style.color = '#0ff';
+                statusBadge.innerHTML = 'IDLE';
+                statusBadge.style.color = '#4a9eff';
+                if (wakeTimeout) clearTimeout(wakeTimeout);
+                // Stop command listening
+                if (commandRecognition) {
+                    try { commandRecognition.stop(); } catch(e) {}
+                    isCommandListening = false;
+                }
+                setListeningIndicator(false);
+            }
+        }
+
+        function setListeningIndicator(active) {
+            const circle = document.getElementById('maxCircle');
+            if (active) {
+                circle.classList.add('listening');
+            } else {
+                circle.classList.remove('listening');
+            }
+        }
+
+        // Persistent wake word detection - runs continuously
+        function initWakeWordDetection() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                addChatMessage('assistant', 'Voice recognition not supported in this browser. Try Chrome.');
+                return false;
+            }
+            
+            function startWakeRecognition() {
+                if (wakeRecognition) {
+                    try { wakeRecognition.stop(); } catch(e) {}
+                }
+                
+                wakeRecognition = new SpeechRecognition();
+                wakeRecognition.continuous = true;
+                wakeRecognition.interimResults = true;
+                wakeRecognition.lang = 'en-US';
+                
+                wakeRecognition.onstart = () => {
+                    console.log('Wake word detection active');
+                    isMicActive = true;
+                };
+                
+                wakeRecognition.onerror = (e) => {
+                    console.log('Wake word error:', e.error);
+                    if (e.error === 'not-allowed') {
+                        document.getElementById('micBanner').style.display = 'flex';
+                        isMicActive = false;
+                    } else if (e.error !== 'no-speech') {
+                        // Restart after error
+                        setTimeout(() => {
+                            if (!isAwake) startWakeRecognition();
+                        }, 1000);
+                    }
+                };
+                
+                wakeRecognition.onend = () => {
+                    console.log('Wake detection ended, restarting...');
+                    if (!isAwake) {
+                        setTimeout(() => startWakeRecognition(), 500);
+                    }
+                };
+                
+                wakeRecognition.onresult = (e) => {
+                    for (let i = e.resultIndex; i < e.results.length; i++) {
+                        const transcript = e.results[i][0].transcript.toLowerCase();
+                        if (transcript.includes('hey max') || transcript.includes('hey max') || 
+                            (transcript.includes('max') && transcript.length < 10)) {
+                            if (!isAwake) {
+                                setWakeState(true);
+                                addChatMessage('assistant', 'Hey! I am awake. What do you need?');
+                                speakResponse('Hey! I am awake. What do you need?');
+                            }
+                        }
+                    }
+                };
+                
+                try {
+                    wakeRecognition.start();
+                } catch(e) {
+                    console.log('Failed to start wake recognition');
+                    setTimeout(() => startWakeRecognition(), 2000);
+                }
+            }
+            
+            startWakeRecognition();
+            return true;
+        }
+        
+        // Command listening (only when awake)
+        function startCommandListening() {
+            if (!isAwake) return;
+            if (commandRecognition) {
+                try { commandRecognition.stop(); } catch(e) {}
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return;
+            
+            commandRecognition = new SpeechRecognition();
+            commandRecognition.continuous = false;
+            commandRecognition.interimResults = false;
+            commandRecognition.lang = 'en-US';
+            
+            commandRecognition.onstart = () => {
+                isCommandListening = true;
+                setListeningIndicator(true);
+            };
+            
+            commandRecognition.onerror = (e) => {
+                isCommandListening = false;
+                setListeningIndicator(false);
+            };
+            
+            commandRecognition.onend = () => {
+                isCommandListening = false;
+                setListeningIndicator(false);
+                if (isAwake) {
+                    setTimeout(() => {
+                        if (isAwake && !isCommandListening) {
+                            startCommandListening();
+                        }
+                    }, 2000);
+                }
+            };
+            
+            commandRecognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                const corrected = autoCorrectText(text);
+                addChatMessage('user', corrected);
+                
+                const response = processCommand(corrected);
+                addChatMessage('assistant', response);
+                speakResponse(response);
+                
+                if (wakeTimeout) {
+                    clearTimeout(wakeTimeout);
+                    wakeTimeout = setTimeout(() => {
+                        if (isAwake) {
+                            setWakeState(false);
+                            addChatMessage('assistant', 'Going to sleep. Say "Hey MAX" to wake me up.');
+                            speakResponse('Going to sleep. Say Hey Max to wake me.');
+                        }
+                    }, 30000);
+                }
+            };
+            
+            try {
+                commandRecognition.start();
+            } catch(e) {}
+        }
+        
+        // Stop command listening (go to sleep)
+        function stopListening() {
+            if (commandRecognition) {
+                try { commandRecognition.stop(); } catch(e) {}
+            }
+            isCommandListening = false;
+            setWakeState(false);
+            addChatMessage('assistant', 'I stopped listening. Say "Hey MAX" to wake me up again.');
+            speakResponse('I stopped listening. Say Hey Max to wake me.');
+        }
+
+        async function requestMicPermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                document.getElementById('micBanner').style.display = 'none';
+                addChatMessage('assistant', 'Microphone is ready. Say "Hey MAX" to wake me up.');
+                initWakeWordDetection();
+                return true;
+            } catch (err) {
+                document.getElementById('micBanner').style.display = 'flex';
+                return false;
+            }
+        }
+
+        function toggleChat() {
+            const win = document.getElementById('chatWindow');
+            win.classList.toggle('show');
+        }
+
+        function addChatMessage(sender, text) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender === 'user' ? 'user-message' : 'assistant-message'}`;
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageDiv.innerHTML = `${text}<div class="message-time">${time}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function showTyping() { document.getElementById('typingIndicatorChat').style.display = 'block'; }
+        function hideTyping() { document.getElementById('typingIndicatorChat').style.display = 'none'; }
+
+        // Alarm functions
+        function playLoopingAlarm() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const gain = audioCtx.createGain();
+                gain.gain.value = 0.4;
+                gain.connect(audioCtx.destination);
+                const playBeep = () => {
+                    const osc = audioCtx.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = 880;
+                    osc.connect(gain);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                };
+                playBeep();
+                const interval = setInterval(() => {
+                    if (audioCtx.state === 'closed') { clearInterval(interval); return; }
+                    playBeep();
+                }, 600);
+                return { interval, audioCtx };
+            } catch(e) { return { interval: setInterval(()=>{},600), audioCtx: null }; }
+        }
+
+        function stopAlarmSound(obj) {
+            if (obj.interval) clearInterval(obj.interval);
+            if (obj.audioCtx && obj.audioCtx.state !== 'closed') obj.audioCtx.close();
+        }
+
+        function showAlarmNotification(alarm) {
+            if (currentAlarmAudio) stopAlarmSound(currentAlarmAudio);
+            const sound = playLoopingAlarm();
+            currentAlarmAudio = sound;
+            const notif = document.createElement('div');
+            notif.className = 'alarm-notification';
+            notif.innerHTML = `<span>ALARM: ${alarm.timeLabel}</span><button onclick="stopCurrentAlarm(this.parentElement)">STOP</button>`;
+            notif.soundObj = sound;
+            document.body.appendChild(notif);
+            speakResponse(`Your ${alarm.timeLabel} alarm is going off. Say stop alarm to silence it.`);
+        }
+
+        function stopCurrentAlarm(notif) {
+            if (notif.soundObj) stopAlarmSound(notif.soundObj);
+            if (currentAlarmAudio) { stopAlarmSound(currentAlarmAudio); currentAlarmAudio = null; }
+            notif.remove();
+            addChatMessage('assistant', 'Alarm stopped.');
+        }
+        
+        function stopAllAlarms() {
+            if (currentAlarmAudio) {
+                stopAlarmSound(currentAlarmAudio);
+                currentAlarmAudio = null;
+            }
+            document.querySelectorAll('.alarm-notification').forEach(notif => notif.remove());
+            return true;
+        }
+
+        function setAlarmFromModal() {
+            let hour = parseInt(document.getElementById('alarmHour').value);
+            let minute = parseInt(document.getElementById('alarmMinute').value);
+            let ampm = document.getElementById('alarmAmPm').value;
+            let military = hour;
+            if (ampm === 'PM' && hour !== 12) military = hour + 12;
+            if (ampm === 'AM' && hour === 12) military = 0;
+            const now = new Date();
+            const target = new Date(now);
+            target.setHours(military, minute, 0, 0);
+            if (target <= now) target.setDate(target.getDate() + 1);
+            const label = `${hour}:${minute.toString().padStart(2,'0')} ${ampm}`;
+            const id = setTimeout(() => {
+                const a = activeAlarms.find(x => x.id === id);
+                if (a) showAlarmNotification(a);
+                activeAlarms = activeAlarms.filter(x => x.id !== id);
+            }, target - now);
+            activeAlarms.push({ id, timeLabel: label, targetTime: target });
+            const timeStr = target.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+            addChatMessage('assistant', `Alarm set for ${timeStr}.`);
+            speakResponse(`Alarm set for ${timeStr}.`);
+            closeAlarmModal();
+        }
+
+        function showSetAlarm() { document.getElementById('alarmModal').style.display = 'flex'; }
+        function closeAlarmModal() { document.getElementById('alarmModal').style.display = 'none'; }
+
+        function showCancelSelect() {
+            if (activeAlarms.length === 0) { addChatMessage('assistant', 'You have no active alarms.'); return; }
+            const container = document.getElementById('alarmListContainer');
+            container.innerHTML = activeAlarms.map((a, i) => `
+                <div style="background:rgba(255,255,255,0.1); padding:12px; margin:8px 0; border-radius:12px; display:flex; justify-content:space-between; cursor:pointer;" onclick="cancelAlarm(${i})">
+                    <span>${a.timeLabel}</span>
+                    <span>X</span>
+                </div>
+            `).join('');
+            document.getElementById('cancelSelectModal').style.display = 'flex';
+        }
+
+        function cancelAlarm(idx) {
+            if (activeAlarms[idx]) {
+                clearTimeout(activeAlarms[idx].id);
+                activeAlarms.splice(idx, 1);
+                addChatMessage('assistant', `That alarm has been cancelled.`);
+                closeCancelSelectModal();
+            }
+        }
+
+        function closeCancelSelectModal() { document.getElementById('cancelSelectModal').style.display = 'none'; }
+        
+        // Reset notes function
+        function resetAllNotes() {
+            let count = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('note_')) {
+                    localStorage.removeItem(key);
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        // Process commands when awake
+        function processCommand(cmd) {
+            const lower = cmd.toLowerCase().trim();
+            
+            // Stop alarm command
+            if (lower.includes('stop alarm') || lower === 'stop alarm' || lower.includes('silence alarm')) {
+                const stopped = stopAllAlarms();
+                if (stopped) return "Alarm stopped.";
+                return "No alarm is currently ringing.";
+            }
+            
+            // Stop listening (go to sleep)
+            if (lower.includes('stop listening') || lower === 'go to sleep' || lower === 'sleep') {
+                stopListening();
+                return "Going to sleep. Say Hey MAX to wake me up.";
+            }
+            
+            // Reset notes
+            if (lower.includes('reset notes') || lower === 'reset notes' || lower.includes('delete all notes') || lower.includes('clear all notes')) {
+                const count = resetAllNotes();
+                if (count > 0) return `Reset complete. Deleted ${count} saved note(s).`;
+                return "You have no notes to reset.";
+            }
+            
+            // Set alarm
+            if (lower.includes('set an alarm') || lower === 'set alarm') { 
+                showSetAlarm(); 
+                return "What time should I set the alarm for? Pick a time in the popup."; 
+            }
+            
+            // Cancel alarm
+            if (lower.includes('cancel alarm')) {
+                if (activeAlarms.length === 0) return "You have no active alarms.";
+                if (activeAlarms.length === 1) { 
+                    clearTimeout(activeAlarms[0].id); 
+                    activeAlarms = []; 
+                    return "That alarm has been cancelled."; 
+                }
+                showCancelSelect(); 
+                return `You have ${activeAlarms.length} active alarms. Select which one to cancel.`;
+            }
+            
+            if (lower.includes('cancel all alarms')) { 
+                activeAlarms.forEach(a => clearTimeout(a.id)); 
+                activeAlarms = []; 
+                return "All alarms have been cleared."; 
+            }
+            
+            // Time and date
+            if (lower.includes('what time is it') || lower === 'time') 
+                return `It's ${new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}.`;
+            if (lower.includes('date')) 
+                return `Today is ${new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' })}.`;
+            
+            // Jokes
+            if (lower.includes('joke')) {
+                const jokes = [
+                    "Why don't scientists trust atoms? Because they make up everything.",
+                    "What do you call a fake noodle? An impasta.",
+                    "Why did the scarecrow win an award? He was outstanding in his field.",
+                    "What do you call a bear with no teeth? A gummy bear."
+                ];
+                return jokes[Math.floor(Math.random() * jokes.length)];
+            }
+            
+            // Open apps
+            if (lower.includes('open youtube')) { window.open('https://youtube.com'); return "Opening YouTube."; }
+            if (lower.includes('open spotify')) { window.open('https://open.spotify.com'); return "Opening Spotify."; }
+            
+            // Search
+            if (lower.match(/^search /)) { 
+                let q = lower.replace(/^search /,''); 
+                window.open(`https://google.com/search?q=${encodeURIComponent(q)}`); 
+                return `Searching for ${q}.`; 
+            }
+            
+            // Remember note
+            if (lower.match(/^remember /)) { 
+                let n = lower.replace(/^remember /,''); 
+                localStorage.setItem(`note_${Date.now()}`, n); 
+                return `Saved: ${n}`; 
+            }
+            
+            // Show notes
+            if (lower === 'notes' || lower === 'show notes') {
+                let notes = [];
+                for (let i=0;i<localStorage.length;i++) { 
+                    let k=localStorage.key(i); 
+                    if(k && k.startsWith('note_')) notes.push(localStorage.getItem(k)); 
+                }
+                if (notes.length === 0) return "You have no saved notes.";
+                return `Your notes:\n${notes.map((n,i)=>`${i+1}. ${n}`).join('\n')}`;
+            }
+            
+            // Generate image
+            if (lower.match(/generate (image|picture|draw)/)) {
+                let d = lower.replace(/generate (image|picture|draw) of? /i,'').trim();
+                if(d && d.length > 1){
+                    const canvas=document.createElement('canvas'); canvas.width=400; canvas.height=400;
+                    const ctx=canvas.getContext('2d');
+                    ctx.fillStyle=`hsl(${Math.random()*360},70%,60%)`; ctx.fillRect(0,0,400,400);
+                    for(let i=0;i<20;i++){ ctx.fillStyle=`hsl(${Math.random()*360},80%,70%)`; ctx.beginPath(); ctx.arc(Math.random()*400,Math.random()*400,Math.random()*40+10,0,Math.PI*2); ctx.fill(); }
+                    ctx.fillStyle='white'; ctx.font='bold 20px Arial'; ctx.fillText(d.substring(0,25),50,200);
+                    const win=window.open(); win.document.write(`<img src="${canvas.toDataURL()}" style="position:fixed;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#0a0f2a;">`);
+                    return `Image generated for ${d}. Check the new window.`;
+                }
+                return "What should I generate an image of?";
+            }
+            
+            // Help
+            if (lower === 'help') {
+                return `Commands:\n- set an alarm\n- cancel alarm\n- cancel all alarms\n- stop alarm (stops ringing alarm)\n- reset notes (deletes all notes)\n- stop listening (go to sleep)\n- what time is it\n- date\n- tell me a joke\n- open youtube/spotify\n- search [query]\n- remember [note]\n- notes (show notes)\n- generate image of [description]\n- clear chat\n\nJust talk to me naturally!`;
+            }
+            
+            if (lower.includes('clear chat')) { 
+                document.getElementById('chatMessages').innerHTML = ''; 
+                return "Chat cleared."; 
+            }
+            
+            if (lower.match(/bye|goodbye|exit/)) { 
+                stopListening();
+                return "Goodbye. Say Hey MAX when you need me."; 
+            }
+            
+            if (lower.match(/hello|hi|hey|yo|what's up/)) 
+                return `Hey! I'm ${assistantName}. What do you need?`;
+            
+            if (lower.includes('how are you')) 
+                return "I'm doing great! How can I help you?";
+            
+            if (lower.includes('thank')) 
+                return "You're welcome!";
+            
+            if (lower.includes('your name')) 
+                return `I'm ${assistantName}, your AI assistant. Say "stop listening" to put me to sleep.`;
+            
+            return `I'm ${assistantName}. You can ask me to set alarms, reset notes, search the web, or just chat. What would you like?`;
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            let msg = input.value.trim();
+            if (!msg) return;
+            
+            const correctedMsg = autoCorrectText(msg);
+            addChatMessage('user', correctedMsg);
+            input.value = '';
+            showTyping();
+            setTimeout(() => {
+                hideTyping();
+                const resp = processCommand(correctedMsg);
+                addChatMessage('assistant', resp);
+                speakResponse(resp);
+            }, 400);
+        }
+
+        function handleChatKeyPress(e) { if (e.key === 'Enter') sendChatMessage(); }
+
+        function openSettings() {
+            const newName = prompt("Enter a new name for me:", assistantName);
+            if (newName && newName.trim()) {
+                assistantName = newName.trim().toUpperCase();
+                document.getElementById('assistantName').innerText = assistantName;
+                addChatMessage('assistant', `You can call me ${assistantName} now.`);
+            }
+        }
+
+        const settingsBtn = document.createElement('button');
+        settingsBtn.innerHTML = '⚙️';
+        settingsBtn.onclick = openSettings;
+        settingsBtn.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(0,255,255,0.2);border:1px solid cyan;width:45px;height:45px;border-radius:50%;color:cyan;font-size:22px;cursor:pointer;z-index:100;backdrop-filter:blur(5px);transition:0.2s;';
+        document.body.appendChild(settingsBtn);
+
+        function createParticles() {
+            const pDiv = document.getElementById('particles');
+            for (let i = 0; i < 60; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const s = Math.random() * 6 + 2;
+                p.style.width = s + 'px';
+                p.style.height = s + 'px';
+                p.style.left = Math.random() * 100 + '%';
+                p.style.top = Math.random() * 100 + '%';
+                p.style.animationDelay = Math.random() * 20 + 's';
+                p.style.animationDuration = (Math.random() * 20 + 15) + 's';
+                pDiv.appendChild(p);
+            }
+        }
+        createParticles();
+        
+        getNaturalVoice().then(v => preferredVoice = v);
+        
+        // Auto-request mic permission on load (once)
+        setTimeout(() => {
+            requestMicPermission();
+        }, 500);
+    </script>
+</body>
+</html>
